@@ -1,58 +1,146 @@
 import { useEffect, useState } from "react";
 import MonitorPage from "./pages/MonitorPage.jsx";
+import ImageEnhancePage from "./pages/ImageEnhancePage.jsx";
+import TasksPage from "./pages/TasksPage.jsx";
+import TowersPage from "./pages/TowersPage.jsx";
 import ArchivePage from "./pages/ArchivePage.jsx";
 import StatusPage from "./pages/StatusPage.jsx";
 
-const TABS = [
-  { key: "monitor", label: "实时监控" },
-  { key: "archive", label: "取证档案" },
-  { key: "status", label: "系统状态" },
+/** 导航结构:与教学系统侧边栏一致(分组 + 图标位 + 折叠态提示)。 */
+const NAV_GROUPS = [
+  {
+    label: "监控",
+    items: [
+      { key: "monitor", label: "实时监控", icon: "▣", desc: "双路流 / 滑动对比" },
+      { key: "enhance", label: "图像去雾", icon: "◫", desc: "上传单图离线增强" },
+    ],
+  },
+  {
+    label: "巡检",
+    items: [
+      { key: "tasks", label: "巡检任务", icon: "✓", desc: "发现登记与审核" },
+      { key: "towers", label: "杆塔台账", icon: "⌖", desc: "线路台账管理" },
+      { key: "archive", label: "取证档案", icon: "▤", desc: "冻结对比记录" },
+    ],
+  },
+  {
+    label: "系统",
+    items: [{ key: "status", label: "系统状态", icon: "◉", desc: "引擎 / 契约 / 口径" }],
+  },
 ];
+
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 export default function App() {
   const [tab, setTab] = useState("monitor");
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const current = ALL_ITEMS.find((t) => t.key === tab);
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* 顶栏 */}
-      <header className="flex items-center gap-4 px-6 py-3.5 border-b border-border/70 backdrop-blur-md sticky top-0 z-20 bg-background/60">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/80 to-accent/70 grid place-items-center font-extrabold text-primary-foreground shadow-lg shadow-primary/20">
-            雾巡
-          </div>
-          <div>
-            <p className="text-sm font-extrabold tracking-wide">雾巡 · 无人机巡检实时增强</p>
-            <p className="text-[11px] text-muted-foreground">UAV Real-time Dehazing System</p>
+    <div className="min-h-screen flex">
+      {/* ── 液态玻璃侧边栏(教学系统同款)── */}
+      <aside
+        className={`liquid-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r transition-[width] duration-300 ${
+          collapsed ? "w-[4.5rem]" : "w-64"
+        } ${mobileOpen ? "" : "-translate-x-full md:translate-x-0"}`}
+      >
+        {/* 品牌 */}
+        <div className={`flex h-[4.5rem] items-center px-4 ${collapsed ? "justify-center px-2" : ""}`}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-secondary text-white shadow-lg shadow-primary/25 text-sm font-extrabold">
+              雾巡
+            </div>
+            {!collapsed && (
+              <div className="min-w-0">
+                <p className="truncate text-base font-extrabold tracking-tight text-sidebar-foreground">雾巡</p>
+                <p className="text-[10px] font-semibold tracking-[0.16em] text-primary">UAV DEHAZING</p>
+              </div>
+            )}
           </div>
         </div>
-        <nav className="ml-6 flex gap-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                tab === t.key
-                  ? "bg-primary/15 text-primary border border-primary/30"
-                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/5 border border-transparent"
-              }`}
-            >
-              {t.label}
-            </button>
+
+        {/* 分组导航 */}
+        <nav className={`flex-1 overflow-y-auto pb-3 ${collapsed ? "px-2" : "px-3"}`}>
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="mb-4">
+              {!collapsed && (
+                <p className="mb-1.5 px-3 text-[10px] font-bold tracking-[0.12em] text-muted-foreground/75">
+                  {group.label}
+                </p>
+              )}
+              <div className="space-y-1">
+                {group.items.map((item) => (
+                  <button
+                    key={item.key}
+                    title={collapsed ? item.label : item.desc}
+                    onClick={() => { setTab(item.key); setMobileOpen(false); }}
+                    className={`w-full flex items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 ${
+                      collapsed ? "justify-center px-2" : "gap-3 px-3"
+                    } ${
+                      tab === item.key
+                        ? "liquid-control text-primary shadow-md"
+                        : "text-sidebar-foreground/75 hover:bg-white/45 hover:text-primary"
+                    }`}
+                  >
+                    <span className="h-[1.05rem] w-[1.05rem] shrink-0 grid place-items-center text-[13px]">{item.icon}</span>
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
-        <div className="flex-1" />
-        <EngineBadge />
-      </header>
 
-      <main className="flex-1">
-        {tab === "monitor" && <MonitorPage />}
-        {tab === "archive" && <ArchivePage />}
-        {tab === "status" && <StatusPage />}
-      </main>
+        {/* 折叠按钮 + 引擎徽章 */}
+        <div className={`border-t border-border/70 p-3 ${collapsed ? "flex flex-col items-center" : ""}`}>
+          {!collapsed && <EngineBadge />}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={`grid place-items-center h-7 w-7 rounded-full border border-border bg-surface text-muted-foreground shadow-sm text-xs ${collapsed ? "mt-2" : "absolute -right-3 top-5 z-10 hidden md:grid"}`}
+            title={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          >
+            {collapsed ? "»" : "«"}
+          </button>
+        </div>
+      </aside>
 
-      <footer className="px-6 py-3 text-[11px] text-muted-foreground/70 border-t border-border/50">
-        雾巡 W2-A · 当前增强引擎为暗通道先验占位实现(如实标注)· 所有指标为实测口径
-      </footer>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />
+      )}
+
+      {/* ── 主区 ── */}
+      <div className={`flex-1 min-w-0 transition-[margin] duration-300 ${collapsed ? "md:ml-[4.5rem]" : "md:ml-64"}`}>
+        {/* 顶栏(教学系统 liquid-navbar 同款) */}
+        <header className="liquid-navbar sticky top-0 z-30 border-b">
+          <div className="flex h-[3.5rem] items-center gap-3 px-5">
+            <button
+              className="md:hidden liquid-control rounded-lg px-2.5 py-1.5 text-sm font-bold text-primary"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              ☰
+            </button>
+            <p className="text-[15px] font-extrabold text-foreground">{current.label}</p>
+            <span className="hidden sm:block text-[11px] text-muted-foreground">{current.desc}</span>
+            <div className="flex-1" />
+            <span className="hidden md:inline text-[11px] text-muted-foreground">无人机巡检实时视觉增强</span>
+            <span className="md:hidden"><EngineBadge /></span>
+          </div>
+        </header>
+
+        {/* 网格底纹主区(教学系统 app-main 同款);页面自带容器与内边距 */}
+        <div className="app-main">
+          {tab === "monitor" && <MonitorPage />}
+          {tab === "enhance" && <ImageEnhancePage />}
+          {tab === "tasks" && <TasksPage />}
+          {tab === "towers" && <TowersPage />}
+          {tab === "archive" && <ArchivePage />}
+          {tab === "status" && <StatusPage />}
+          <footer className="pb-4 text-center text-[11px] text-muted-foreground/70">
+            雾巡 · 当前增强引擎为暗通道先验占位实现(如实标注)· 所有指标为实测口径
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }
@@ -72,7 +160,7 @@ function EngineBadge() {
     return () => { alive = false; clearInterval(id); };
   }, []);
   return (
-    <span className="px-3 py-1 rounded-lg bg-accent/10 border border-accent/25 text-[11px] font-bold text-accent">
+    <span className="inline-block px-3 py-1 rounded-lg bg-accent/10 border border-accent/25 text-[11px] font-bold text-accent">
       {engine ?? "…"}{engine?.includes("placeholder") ? " · 占位" : ""}
     </span>
   );

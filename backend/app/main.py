@@ -2,35 +2,42 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI
+import cv2
+import numpy as np
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .capture import CaptureSource
+from .inspection import router as inspection_router
 from .pipeline import Pipeline
 from .store import CaptureStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 
 ROOT = Path(__file__).resolve().parents[2]
+import os
 
-app = FastAPI(title="UAV Real-time Dehazing", version="0.1.0")
+_DATA_DIR = Path(os.environ.get("WUXUN_DATA_DIR", ROOT / "data"))
+_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+app = FastAPI(title="UAV Real-time Dehazing", version="0.3.0")
+app.include_router(inspection_router)
 capture = CaptureSource()
-store = CaptureStore(ROOT / "data")
+store = CaptureStore(_DATA_DIR)
 pipeline = Pipeline(capture)
 
 
 @app.on_event("startup")
 def _startup() -> None:
+    # 只启动流水线;不自动抢占摄像头——视频源由用户显式连接(/api/source)。
+    # (无头/服务环境与部分虚拟摄像头下,启动期打开设备可能阻塞 MSMF/COM 初始化。)
     pipeline.start()
-    try:
-        capture.open(0)  # 默认尝试本机摄像头;失败不阻塞服务
-    except ValueError:
-        logging.getLogger("main").warning("未找到本机摄像头,请通过 /api/source 指定 RTSP 或视频文件")
 
 
 @app.on_event("shutdown")
@@ -91,6 +98,41 @@ def stream_raw():
 def stream_enhanced():
     return StreamingResponse(
         pipeline.mjpeg("enhanced"), media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+class EnhanceImageOut(BaseModel):
+    ok: bool
+    image_b64: str
+    capture_id: int | None = None
+
+
+@app.post("/api/enhance/image", response_model=EnhanceImageOut)
+async def enhance_image(file: UploadFile = File(...), save: bool = False):
+    """单图去雾:上传图像 → 占位引擎增强 → base64 返回;save=true 时双图存入取证档案。"""
+    raw_bytes = await file.read()
+    if len(raw_bytes) > 20 * 1024 * 1024:
+        return JSONResponse({"ok": False, "error": "图片超过 20MB"}, status_code=400)
+    arr = np.frombuffer(raw_bytes, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        return JSONResponse({"ok": False, "error": "无法解析图片文件"}, status_code=400)
+
+    enhanced = pipeline.engine(img)
+    ok_r, raw_jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    ok_e, enh_jpg = cv2.imencode(".jpg", enhanced, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    if not (ok_r and ok_e):
+        return JSONResponse({"ok": False, "error": "图像编码失败"}, status_code=500)
+
+    capture_id = None
+    if save:
+        saved = store.save(raw_jpg.tobytes(), enh_jpg.tobytes(), note=f"upload:{file.filename}")
+        capture_id = saved["id"]
+
+    return EnhanceImageOut(
+        ok=True,
+        image_b64=base64.b64encode(enh_jpg.tobytes()).decode(),
+        capture_id=capture_id,
     )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import time
@@ -43,8 +44,12 @@ class Pipeline:
         with self._lock:
             return self._raw_jpg, self._enh_jpg, self._last_meta
 
-    def mjpeg(self, kind: str):
-        """MJPEG 帧生成器:kind = 'raw' | 'enhanced'。"""
+    async def mjpeg(self, kind: str):
+        """MJPEG 帧生成器(async,不占线程池):kind = 'raw' | 'enhanced'。
+
+        同步生成器会被逐帧丢进线程池执行,每条流独占一个线程,少量观看连接
+        即耗尽默认 40 线程导致其余请求排队超时——因此必须为异步生成器。
+        """
         while True:
             with self._lock:
                 jpg = self._raw_jpg if kind == "raw" else self._enh_jpg
@@ -56,7 +61,7 @@ class Pipeline:
                     + jpg
                     + b"\r\n"
                 )
-            time.sleep(1.0 / STREAM_TARGET_FPS)
+            await asyncio.sleep(1.0 / STREAM_TARGET_FPS)
 
     # ── 内部 ──
 

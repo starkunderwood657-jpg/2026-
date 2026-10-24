@@ -1,40 +1,300 @@
 @import "tailwindcss";
 
+/* ============================================================
+   设计体系:整体移植自教学系统(智解Lab)globals.css
+   仅将主题色换为雾巡品牌色(深青 + 暖橙),类名保持一致,
+   并追加 .glass / .glass-hover 别名兼容本仓库既有页面。
+   ============================================================ */
+
 @theme {
-  --color-primary: oklch(0.62 0.11 185);
-  --color-primary-foreground: oklch(0.98 0.01 190);
-  --color-secondary: oklch(0.75 0.09 60);
-  --color-background: oklch(0.16 0.02 190);
-  --color-foreground: oklch(0.93 0.01 190);
-  --color-muted: oklch(0.62 0.02 190);
-  --color-muted-foreground: oklch(0.68 0.02 190);
-  --color-surface: oklch(0.20 0.02 190 / 0.6);
-  --color-surface-foreground: oklch(0.93 0.01 190);
-  --color-border: oklch(0.30 0.02 190);
-  --color-accent: oklch(0.75 0.12 60);
-  --color-accent-foreground: oklch(0.25 0.05 60);
-  --color-success: oklch(0.70 0.14 155);
-  --color-danger: oklch(0.65 0.19 25);
-  --radius-2xl: 1rem;
+  --color-primary: oklch(0.56 0.09 195);
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: oklch(0.70 0.13 55);
+  --color-secondary-foreground: #ffffff;
+
+  --color-success: oklch(0.65 0.15 150);
+  --color-warning: oklch(0.75 0.15 80);
+  --color-danger: oklch(0.6 0.15 20);
+
+  --color-background: oklch(0.975 0.012 195);
+  --color-foreground: oklch(0.22 0.03 210);
+
+  --color-surface: #ffffff;
+  --color-surface-foreground: oklch(0.22 0.03 210);
+
+  --color-muted: oklch(0.55 0.04 200);
+  --color-muted-foreground: oklch(0.45 0.03 205);
+
+  --color-border: oklch(0.9 0.02 195);
+
+  --color-sidebar: oklch(0.985 0.009 195);
+  --color-sidebar-foreground: oklch(0.22 0.03 210);
+
+  --color-accent: oklch(0.68 0.13 55);
+  --color-accent-foreground: oklch(0.25 0.05 55);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+}
+
+.dark {
+  --color-background: oklch(0.15 0.04 210);
+  --color-foreground: oklch(0.9 0.04 195);
+  --color-surface: oklch(0.2 0.04 210);
+  --color-surface-foreground: oklch(0.9 0.04 195);
+  --color-muted: oklch(0.55 0.04 200);
+  --color-muted-foreground: oklch(0.6 0.03 205);
+  --color-border: oklch(0.3 0.03 210);
+  --color-sidebar: oklch(0.17 0.03 210);
+  --color-sidebar-foreground: oklch(0.9 0.04 195);
+}
+
+html {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
 }
 
 body {
   margin: 0;
-  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-  color: var(--color-foreground);
+  min-height: 100vh;
+  font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background:
-    radial-gradient(1100px 520px at 12% -8%, oklch(0.24 0.05 190 / 0.55), transparent 60%),
-    radial-gradient(900px 480px at 95% 0%, oklch(0.22 0.04 65 / 0.28), transparent 55%),
+    radial-gradient(circle at 8% 0%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 28rem),
+    radial-gradient(circle at 94% 12%, color-mix(in oklch, var(--color-secondary) 9%, transparent), transparent 25rem),
     var(--color-background);
+}
+
+#root {
   min-height: 100vh;
 }
 
-.glass {
-  background: oklch(0.93 0.01 190 / 0.05);
-  border: 1px solid oklch(0.93 0.01 190 / 0.10);
-  backdrop-filter: blur(14px);
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 24%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--color-muted) 35%, transparent) transparent;
+}
+
+.app-main {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-main::before {
+  position: fixed;
+  inset: 3.5rem 0 0;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+  opacity: 0.48;
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-primary) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-primary) 5%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+.page-shell {
+  width: min(100%, 76rem);
+  margin-inline: auto;
+  padding: 1.75rem 1.25rem 3rem;
+}
+
+.surface-panel {
+  border: 1px solid color-mix(in oklch, var(--color-border) 82%, transparent);
+  background: color-mix(in oklch, var(--color-surface) 92%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 16px 45px color-mix(in oklch, var(--color-primary) 5%, transparent);
+}
+
+.hero-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--color-primary) 18%, var(--color-border));
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--color-surface) 96%, transparent), color-mix(in oklch, var(--color-primary) 7%, var(--color-surface)));
+  box-shadow: 0 24px 70px color-mix(in oklch, var(--color-primary) 10%, transparent);
+}
+
+.hero-panel::after {
+  position: absolute;
+  width: 14rem;
+  height: 14rem;
+  right: -5rem;
+  top: -7rem;
+  border-radius: 999px;
+  content: "";
+  background: color-mix(in oklch, var(--color-primary) 14%, transparent);
+  filter: blur(2px);
+}
+
+.liquid-sidebar {
+  border-color: color-mix(in oklch, var(--color-border) 88%, transparent);
+  background: color-mix(in oklch, var(--color-sidebar) 92%, transparent);
+  box-shadow: 10px 0 35px color-mix(in oklch, var(--color-primary) 4%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.liquid-navbar {
+  border-color: color-mix(in oklch, var(--color-border) 80%, transparent);
+  background: color-mix(in oklch, var(--color-surface) 78%, transparent);
+  backdrop-filter: blur(22px) saturate(130%);
+  -webkit-backdrop-filter: blur(22px) saturate(130%);
+}
+
+.liquid-control {
+  border: 1px solid color-mix(in oklch, white 45%, var(--color-border));
+  background: color-mix(in oklch, var(--color-surface) 60%, transparent);
+  box-shadow: 0 5px 18px color-mix(in oklch, var(--color-primary) 7%, transparent);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ========== 动效 keyframes ========== */
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--color-primary) 45%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in oklch, var(--color-primary) 0%, transparent); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in { animation: fade-in 0.35s ease both; }
+
+/* ========== 动效工具类 ========== */
+
+.bg-grid-primary {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-primary) 9%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-primary) 9%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.bg-dot-pattern {
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--color-primary) 16%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-primary));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-x 6s ease infinite;
+}
+
+.glass-card {
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  background: color-mix(in oklch, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 18px 50px color-mix(in oklch, var(--color-primary) 7%, transparent);
+}
+
+.glow-ring { transition: box-shadow 0.25s ease, border-color 0.25s ease; }
+
+.glow-ring:focus-within,
+.glow-ring:focus-visible {
+  border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklch, var(--color-primary) 18%, transparent),
+    0 8px 30px color-mix(in oklch, var(--color-primary) 14%, transparent);
+}
+
+.hover-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklch, var(--color-primary) 30%, var(--color-border));
+  box-shadow:
+    0 4px 8px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 20px 48px color-mix(in oklch, var(--color-primary) 13%, transparent);
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-muted) 12%, transparent) 25%,
+    color-mix(in oklch, var(--color-muted) 22%, transparent) 37%,
+    color-mix(in oklch, var(--color-muted) 12%, transparent) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.6s ease infinite;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .surface-panel, .hero-panel, .liquid-sidebar, .liquid-navbar, .liquid-control, .glass-card {
+    background: var(--color-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient, .skeleton-shimmer { animation: none; }
+}
+
+/* ========== 兼容别名(本仓库既有页面使用) ========== */
+
+.glass { /* 与教学系统 .glass-card 同款 */
+  border: 1px solid color-mix(in oklch, var(--color-border) 80%, transparent);
+  background: color-mix(in oklch, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 18px 50px color-mix(in oklch, var(--color-primary) 7%, transparent);
   border-radius: 1rem;
 }
 
-.glass-hover { transition: transform 0.18s ease, border-color 0.18s ease; }
-.glass-hover:hover { transform: translateY(-2px); border-color: oklch(0.62 0.11 185 / 0.45); }
+.glass-hover { /* 与教学系统 .hover-lift 同款 */
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-hover:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklch, var(--color-primary) 30%, var(--color-border));
+  box-shadow:
+    0 4px 8px color-mix(in oklch, var(--color-foreground) 4%, transparent),
+    0 20px 48px color-mix(in oklch, var(--color-primary) 13%, transparent);
+}
+
+header.sticky { background: color-mix(in oklch, var(--color-surface) 78%, transparent); }
