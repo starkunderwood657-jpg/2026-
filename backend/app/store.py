@@ -48,3 +48,13 @@ class CaptureStore:
                 (limit,),
             ).fetchall()
         return [{"id": r[0], "created_at": r[1], "note": r[2]} for r in rows]
+
+    def image_path(self, cid: int, kind: str) -> str | None:
+        col = "raw_path" if kind == "raw" else "enhanced_path"
+        if col not in ("raw_path", "enhanced_path"):
+            return None
+        with self._lock:
+            row = self._db.execute(
+                f"SELECT {col} FROM captures WHERE id = ?", (cid,)
+            ).fetchone()
+        return row[0] if row else None

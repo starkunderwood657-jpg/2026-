@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -72,6 +72,14 @@ def list_captures():
     return {"captures": store.list()}
 
 
+@app.get("/api/captures/{cid}/image")
+def capture_image(cid: int, kind: str = "raw"):
+    path = store.image_path(cid, kind)
+    if path is None or not Path(path).exists():
+        return JSONResponse({"ok": False, "error": "记录不存在"}, status_code=404)
+    return FileResponse(path, media_type="image/jpeg")
+
+
 @app.get("/stream/raw")
 def stream_raw():
     return StreamingResponse(
@@ -86,5 +94,8 @@ def stream_enhanced():
     )
 
 
-# 前端静态页(最后挂载,避免覆盖 API 路由)
-app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")
+# 前端静态托管:优先 React 构建产物,旧单文件页兜底
+_static_dir = ROOT / "frontend" / "dist"
+if not _static_dir.exists():
+    _static_dir = ROOT / "web"
+app.mount("/", StaticFiles(directory=_static_dir, html=True), name="web")
