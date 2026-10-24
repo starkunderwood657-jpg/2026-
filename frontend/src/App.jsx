@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import MonitorPage from "./pages/MonitorPage.jsx";
 import ImageEnhancePage from "./pages/ImageEnhancePage.jsx";
+import BatchPage from "./pages/BatchPage.jsx";
 import TasksPage from "./pages/TasksPage.jsx";
 import TowersPage from "./pages/TowersPage.jsx";
 import ArchivePage from "./pages/ArchivePage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 import StatusPage from "./pages/StatusPage.jsx";
 
 /** 导航结构:与教学系统侧边栏一致(分组 + 图标位 + 折叠态提示)。 */
@@ -11,8 +13,9 @@ const NAV_GROUPS = [
   {
     label: "监控",
     items: [
-      { key: "monitor", label: "实时监控", icon: "▣", desc: "双路流 / 滑动对比" },
+      { key: "monitor", label: "实时监控", icon: "▣", desc: "双路流 / 滑动对比 / 参数调节" },
       { key: "enhance", label: "图像去雾", icon: "◫", desc: "上传单图离线增强" },
+      { key: "batch", label: "视频批处理", icon: "▶", desc: "整段录像批量去雾" },
     ],
   },
   {
@@ -21,6 +24,7 @@ const NAV_GROUPS = [
       { key: "tasks", label: "巡检任务", icon: "✓", desc: "发现登记与审核" },
       { key: "towers", label: "杆塔台账", icon: "⌖", desc: "线路台账管理" },
       { key: "archive", label: "取证档案", icon: "▤", desc: "冻结对比记录" },
+      { key: "dashboard", label: "统计看板", icon: "▤", desc: "业务与性能汇总" },
     ],
   },
   {
@@ -132,9 +136,11 @@ export default function App() {
         <div className="app-main">
           {tab === "monitor" && <MonitorPage />}
           {tab === "enhance" && <ImageEnhancePage />}
+          {tab === "batch" && <BatchPage />}
           {tab === "tasks" && <TasksPage />}
           {tab === "towers" && <TowersPage />}
           {tab === "archive" && <ArchivePage />}
+          {tab === "dashboard" && <DashboardPage />}
           {tab === "status" && <StatusPage />}
           <footer className="pb-4 text-center text-[11px] text-muted-foreground/70">
             雾巡 · 当前增强引擎为暗通道先验占位实现(如实标注)· 所有指标为实测口径

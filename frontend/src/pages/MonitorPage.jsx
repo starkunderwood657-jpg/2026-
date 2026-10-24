@@ -7,6 +7,7 @@ export default function MonitorPage() {
   const [toast, setToast] = useState(null);
   const [split, setSplit] = useState(50);
   const [live, setLive] = useState(false);
+  const [params, setParams] = useState(null); // {omega, patch, t0}
 
   const showToast = (msg) => {
     setToast(msg);
@@ -27,6 +28,20 @@ export default function MonitorPage() {
     const id = setInterval(tick, 1000);
     return () => { alive = false; clearInterval(id); };
   }, []);
+
+  useEffect(() => {
+    fetch("/api/engine/params").then(r => r.json()).then(d => d.ok && setParams(d.params)).catch(() => {});
+  }, []);
+
+  const applyParams = async (next) => {
+    setParams(next);
+    const r = await fetch("/api/engine/params", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next),
+    });
+    const d = await r.json();
+    if (d.ok) setParams(d.params); // 以后端规范化后的值为准
+    else showToast(d.error ?? "参数应用失败");
+  };
 
   const connectSource = async () => {
     try {
@@ -103,6 +118,27 @@ export default function MonitorPage() {
         <MetricCard label="累计处理帧" value={metrics ? metrics.frames : "–"} unit="" />
       </div>
 
+      {/* 引擎参数面板 */}
+      {params && (
+        <div className="glass p-4 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-extrabold text-primary">引擎参数</h3>
+            <span className="text-[11px] text-muted-foreground">实时生效 · 对比滑杆可直观查看强度差异</span>
+            <div className="flex-1" />
+            <button onClick={() => applyParams({ omega: 0.95, patch: 15, t0: 0.1 })}
+              className="px-3 py-1 rounded-lg glass glass-hover text-[11.5px] font-bold">恢复默认</button>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5">
+            <Slider label="去雾强度 ω" min={0} max={1} step={0.05} value={params.omega}
+              onChange={(v) => applyParams({ ...params, omega: v })} fmt={(v) => v.toFixed(2)} />
+            <Slider label="暗通道窗口" min={3} max={51} step={2} value={params.patch}
+              onChange={(v) => applyParams({ ...params, patch: v })} fmt={(v) => String(v)} />
+            <Slider label="透射率下限 t₀" min={0.01} max={0.5} step={0.01} value={params.t0}
+              onChange={(v) => applyParams({ ...params, t0: v })} fmt={(v) => v.toFixed(2)} />
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 glass px-5 py-2.5 text-sm font-semibold text-foreground shadow-xl z-50">
           {toast}
@@ -168,5 +204,19 @@ function MetricCard({ label, value, unit, hero }) {
         {unit && <span className="text-xs font-normal text-muted-foreground ml-1">{unit}</span>}
       </p>
     </div>
+  );
+}
+
+function Slider({ label, min, max, step, value, onChange, fmt }) {
+  return (
+    <label className="block">
+      <span className="flex items-baseline justify-between mb-1">
+        <span className="text-[11px] text-muted-foreground font-semibold">{label}</span>
+        <span className="font-mono text-[13px] font-bold text-primary">{fmt(value)}</span>
+      </span>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full" style={{ accentColor: "var(--color-primary)" }} />
+    </label>
   );
 }

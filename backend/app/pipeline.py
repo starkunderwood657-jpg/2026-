@@ -40,6 +40,17 @@ class Pipeline:
     def stop(self) -> None:
         self._running = False
 
+    def set_engine(self, engine: Engine) -> None:
+        """运行时替换引擎(参数调节用):整对象原子替换,避免逐字段竞态。"""
+        self.engine = engine
+
+    def engine_params(self) -> dict:
+        params = getattr(self.engine, "__dict__", {})
+        return {
+            k: v for k, v in params.items()
+            if isinstance(v, (int, float)) and not k.startswith("_")
+        }
+
     def latest_jpegs(self) -> tuple[bytes | None, bytes | None, dict | None]:
         with self._lock:
             return self._raw_jpg, self._enh_jpg, self._last_meta

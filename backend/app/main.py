@@ -13,7 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .batch import BatchManager
 from .capture import CaptureSource
+from .enhance import DarkChannelEngine
 from .inspection import router as inspection_router
 from .pipeline import Pipeline
 from .store import CaptureStore
@@ -26,11 +28,12 @@ import os
 _DATA_DIR = Path(os.environ.get("WUXUN_DATA_DIR", ROOT / "data"))
 _DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title="UAV Real-time Dehazing", version="0.3.0")
+app = FastAPI(title="UAV Real-time Dehazing", version="0.4.0")
 app.include_router(inspection_router)
 capture = CaptureSource()
 store = CaptureStore(_DATA_DIR)
 pipeline = Pipeline(capture)
+batch = BatchManager(_DATA_DIR / "batch")
 
 
 @app.on_event("startup")
@@ -134,6 +137,99 @@ async def enhance_image(file: UploadFile = File(...), save: bool = False):
         image_b64=base64.b64encode(enh_jpg.tobytes()).decode(),
         capture_id=capture_id,
     )
+
+
+# ── 引擎参数调节(占位引擎参数实时可调) ──
+
+class EngineParamsIn(BaseModel):
+    omega: float = 0.95   # 去雾强度(0–1)
+    patch: int = 15       # 暗通道窗口(奇数, 3–51)
+    t0: float = 0.1       # 透射率下限
+
+
+@app.get("/api/engine/params")
+def get_engine_params():
+    return {"ok": True, "engine": pipeline.engine.name, "params": pipeline.engine_params()}
+
+
+@app.post("/api/engine/params")
+def set_engine_params(body: EngineParamsIn):
+    omega = min(max(body.omega, 0.0), 1.0)
+    patch = min(max(body.patch if body.patch % 2 == 1 else body.patch + 1, 3), 51)
+    t0 = min(max(body.t0, 0.01), 0.5)
+    pipeline.set_engine(DarkChannelEngine(patch=patch, omega=omega, t0=t0))
+    return {"ok": True, "engine": pipeline.engine.name, "params": pipeline.engine_params()}
+
+
+# ── 统计看板聚合 ──
+
+@app.get("/api/stats")
+def stats_overview():
+    from .inspection import biz
+
+    findings = biz.list_findings()
+    by_status: dict[str, int] = {}
+    by_kind: dict[str, int] = {}
+    by_tower: dict[str, int] = {}
+    timeline: list[dict] = []
+    for f in findings:
+        by_status[f["status"]] = by_status.get(f["status"], 0) + 1
+        by_kind[f["kind"]] = by_kind.get(f["kind"], 0) + 1
+        key = f.get("tower_code") or "未指定"
+        by_tower[key] = by_tower.get(key, 0) + 1
+        timeline.append({"id": f["id"], "kind": f["kind"], "status": f["status"], "created_at": f["created_at"]})
+    timeline.reverse()  # 时间正序
+    return {
+        "ok": True,
+        "tasks_total": len(biz.list_tasks()),
+        "towers_total": len(biz.list_towers()),
+        "captures_total": len(store.list(limit=1000)),
+        "findings_total": len(findings),
+        "by_status": by_status,
+        "by_kind": by_kind,
+        "by_tower": by_tower,
+        "timeline": timeline[-60:],
+        "metrics": pipeline.metrics.snapshot(),
+    }
+
+
+# ── 视频批处理 ──
+
+@app.post("/api/batch/start")
+async def batch_start(file: UploadFile = File(...), params: EngineParamsIn | None = None):
+    video_bytes = await file.read()
+    if len(video_bytes) > 500 * 1024 * 1024:
+        return JSONResponse({"ok": False, "error": "视频超过 500MB"}, status_code=400)
+    p = params or EngineParamsIn()
+    patch = min(max(p.patch if p.patch % 2 == 1 else p.patch + 1, 3), 51)
+    engine = DarkChannelEngine(
+        patch=patch,
+        omega=min(max(p.omega, 0.0), 1.0),
+        t0=min(max(p.t0, 0.01), 0.5),
+    )
+    job = batch.submit(video_bytes, file.filename or "video", lambda: engine)
+    return {"ok": True, "job": job.snapshot()}
+
+
+@app.get("/api/batch/jobs")
+def batch_jobs():
+    return {"ok": True, "jobs": batch.list()}
+
+
+@app.get("/api/batch/status/{job_id}")
+def batch_status(job_id: str):
+    job = batch.get(job_id)
+    if job is None:
+        return JSONResponse({"ok": False, "error": "任务不存在"}, status_code=404)
+    return {"ok": True, "job": job.snapshot()}
+
+
+@app.get("/api/batch/download/{job_id}")
+def batch_download(job_id: str):
+    job = batch.get(job_id)
+    if job is None or job.status != "done":
+        return JSONResponse({"ok": False, "error": "任务不存在或未完成"}, status_code=404)
+    return FileResponse(job.output_path, media_type="video/x-msvideo", filename=job.output_path.name)
 
 
 # 前端静态托管:优先 React 构建产物,旧单文件页兜底
