@@ -3,86 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>无人机巡检实时去雾 · W1</title>
+<title>雾巡 · 无人机巡检实时增强</title>
 <style>
-  :root { --ink:#0e2928; --paper:#f5f8f7; --accent:#c47935; --muted:#586c69; --line:#cedbd5; }
-  * { box-sizing: border-box; margin: 0; }
-  body { font-family: "Microsoft YaHei", sans-serif; background: var(--paper); color: #203b39; }
-  header { padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-  header h1 { font-size: 22px; color: var(--ink); }
-  header .tag { font-size: 12px; color: var(--muted); }
-  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  input[type=text] { padding: 8px 10px; width: 300px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
-  button { padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  button.primary { background: var(--ink); color: #fff; }
-  button.accent { background: var(--accent); color: #fff; }
-  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 28px; }
-  .pane { background: #101b1a; border-radius: 12px; overflow: hidden; position: relative; aspect-ratio: 16/9; }
-  .pane img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .pane .label { position: absolute; top: 10px; left: 12px; background: rgba(14,41,40,.85); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 6px; }
-  .pane .label em { color: #eeb65a; font-style: normal; }
-  #metrics { display: flex; gap: 14px; padding: 14px 28px; flex-wrap: wrap; }
-  .chip { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--muted); }
-  .chip b { color: var(--ink); font-size: 16px; margin-left: 6px; }
-  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; display: none; }
+  :root {
+    --bg:#0c1514; --panel:#111e1c; --panel2:#0f1a19; --line:#1e302c;
+    --ink:#e8f1ee; --muted:#8aa39d; --accent:#e8964f; --accent2:#eeb65a;
+    --ok:#4cc38a; --danger:#e5484d;
+  }
+  * { box-sizing:border-box; margin:0; }
+  body { font-family:"Microsoft YaHei","Segoe UI",sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; display:flex; flex-direction:column; }
+
+  /* ── 顶栏 ── */
+  header { display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .logo { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#1c3a36,#0e1f1d); border:1px solid #2b4741; display:grid; place-items:center; color:var(--accent2); font-weight:800; font-size:15px; }
+  .brand h1 { font-size:16px; letter-spacing:.5px; }
+  .brand p { font-size:11px; color:var(--muted); margin-top:1px; }
+  .spacer { flex:1; }
+  .src { display:flex; gap:8px; align-items:center; }
+  .src input { background:var(--panel2); border:1px solid var(--line); color:var(--ink); padding:8px 12px; border-radius:8px; font-size:12.5px; width:280px; outline:none; }
+  .src input:focus { border-color:#3a5d55; }
+  button { border:none; border-radius:8px; padding:8px 16px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; transition:filter .15s; }
+  button:hover { filter:brightness(1.15); }
+  .btn-ghost { background:var(--panel); color:var(--ink); border:1px solid var(--line); }
+  .btn-primary { background:#1d3d38; color:var(--ink); border:1px solid #2f544d; }
+  .btn-accent { background:var(--accent); color:#241304; }
+  .status { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .dot { width:8px; height:8px; border-radius:50%; background:#4a5c58; }
+  .dot.live { background:var(--ok); box-shadow:0 0 8px rgba(76,195,138,.55); }
+
+  /* ── 模式切换 ── */
+  .modebar { display:flex; gap:6px; padding:10px 22px 0; align-items:center; }
+  .modebar .hint { font-size:11px; color:var(--muted); margin-left:10px; }
+  .seg { display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+  .seg button { background:transparent; color:var(--muted); border-radius:0; padding:7px 18px; }
+  .seg button.on { background:#1d3d38; color:var(--ink); }
+
+  /* ── 主视图 ── */
+  main { flex:1; padding:12px 22px 0; }
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .viewer { position:relative; background:#08100f; border:1px solid var(--line); border-radius:14px; overflow:hidden; aspect-ratio:16/9; }
+  .viewer img { width:100%; height:100%; object-fit:contain; display:block; }
+  .viewer .tag { position:absolute; top:10px; left:12px; font-size:11px; padding:4px 10px; border-radius:7px; background:rgba(8,16,15,.78); border:1px solid rgba(255,255,255,.08); color:var(--ink); backdrop-filter:blur(4px); }
+  .viewer .tag em { color:var(--accent2); font-style:normal; }
+
+  /* 滑动对比模式 */
+  .compare { display:none; position:relative; background:#08100f; border:1px solid var(--line); border-radius:14px; overflow:hidden; aspect-ratio:16/9; user-select:none; }
+  .compare img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .compare img.top { clip-path:inset(0 0 0 var(--split,50%)); }
+  .compare .divider { position:absolute; top:0; bottom:0; left:var(--split,50%); width:2px; background:var(--accent); box-shadow:0 0 10px rgba(232,150,79,.6); }
+  .compare .divider::after { content:"⇄"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--accent); color:#241304; font-size:13px; font-weight:800; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; }
+  .compare .tagL,.compare .tagR { position:absolute; top:10px; font-size:11px; padding:4px 10px; border-radius:7px; background:rgba(8,16,15,.78); border:1px solid rgba(255,255,255,.08); }
+  .compare .tagL { left:12px; } .compare .tagR { right:12px; color:var(--accent2); }
+  .compare input[type=range] { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:ew-resize; margin:0; }
+
+  /* ── 指标条 ── */
+  #metrics { display:flex; gap:10px; padding:14px 22px 20px; flex-wrap:wrap; }
+  .chip { background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:9px 16px; min-width:120px; }
+  .chip small { display:block; font-size:10.5px; color:var(--muted); letter-spacing:.4px; }
+  .chip b { font-size:19px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .chip b span { font-size:11px; color:var(--muted); font-weight:400; margin-left:2px; }
+  .chip.hero b { color:var(--accent2); }
+
+  #toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#1d3d38; border:1px solid #2f544d; color:var(--ink); padding:10px 18px; border-radius:10px; font-size:13px; display:none; }
 </style>
 </head>
 <body>
+
 <header>
-  <div>
-    <h1>无人机巡检 · 实时视觉增强</h1>
-    <div class="tag">W1 骨架 · 当前引擎:暗通道先验(占位) · 实验室模型接入后替换</div>
+  <div class="logo">雾巡</div>
+  <div class="brand">
+    <h1>雾巡 · 无人机巡检实时视觉增强</h1>
+    <p>UAV Real-time Dehazing · 引擎:暗通道先验(占位,实验室模型接入后替换)</p>
   </div>
-  <div class="bar">
-    <input type="text" id="source" placeholder="0 = 摄像头 / rtsp://… / D:\fog.mp4" value="0">
-    <button class="primary" onclick="setSource()">打开视频源</button>
-    <button class="accent" onclick="freeze()">冻结对比 · 取证</button>
+  <div class="spacer"></div>
+  <div class="src">
+    <input type="text" id="source" placeholder="0 = 摄像头 / rtsp://… / 视频文件路径" value="0">
+    <button class="btn-primary" onclick="setSource()">连接视频源</button>
+    <button class="btn-accent" onclick="freeze()">⬒ 冻结取证</button>
   </div>
+  <div class="status"><span class="dot" id="dot"></span><span id="stTxt">未连接</span></div>
 </header>
 
+<div class="modebar">
+  <div class="seg">
+    <button id="mSplit" class="on" onclick="setMode('split')">左右分屏</button>
+    <button id="mComp" onclick="setMode('comp')">滑动对比</button>
+  </div>
+  <span class="hint" id="hint">两路画面来自同一帧,可直接对比</span>
+</div>
+
 <main>
-  <div class="pane"><span class="label">原始画面</span><img id="raw" src="/stream/raw" alt="原始画面"></div>
-  <div class="pane"><span class="label">增强画面 <em>(占位引擎)</em></span><img id="enh" src="/stream/enhanced" alt="增强画面"></div>
+  <div class="split" id="viewSplit">
+    <div class="viewer"><span class="tag">原始画面</span><img src="/stream/raw" alt="原始"></div>
+    <div class="viewer"><span class="tag">增强画面 <em>占位引擎</em></span><img src="/stream/enhanced" alt="增强"></div>
+  </div>
+  <div class="compare" id="viewComp">
+    <img src="/stream/raw" alt="原始">
+    <img class="top" src="/stream/enhanced" alt="增强">
+    <span class="tagL">← 原始</span><span class="tagR">增强 →</span>
+    <div class="divider"></div>
+    <input type="range" min="2" max="98" value="50" oninput="document.getElementById('viewComp').style.setProperty('--split', this.value+'%')">
+  </div>
 </main>
 
 <div id="metrics">
-  <span class="chip">FPS<b id="m-fps">–</b></span>
-  <span class="chip">增强耗时 P50<b id="m-p50">–</b></span>
-  <span class="chip">增强耗时 P95<b id="m-p95">–</b></span>
-  <span class="chip">端到端延迟<b id="m-e2e">–</b></span>
-  <span class="chip">累计帧<b id="m-frames">–</b></span>
-</main>
+  <div class="chip hero"><small>处理帧率 FPS</small><b id="m-fps">–</b></div>
+  <div class="chip"><small>增强耗时 P50</small><b id="m-p50">–<span>ms</span></b></div>
+  <div class="chip"><small>增强耗时 P95</small><b id="m-p95">–<span>ms</span></b></div>
+  <div class="chip"><small>端到端延迟</small><b id="m-e2e">–<span>ms</span></b></div>
+  <div class="chip"><small>累计处理帧</small><b id="m-frames">–</b></div>
+</div>
 
 <div id="toast"></div>
 
 <script>
-async function setSource() {
-  const source = document.getElementById('source').value.trim();
-  const r = await fetch('/api/source', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ source }) });
-  toast((await r.json()).ok ? '视频源已切换: ' + source : '打开失败,请检查源地址');
+let mode='split';
+function setMode(m){
+  mode=m;
+  document.getElementById('viewSplit').style.display = m==='split'?'grid':'none';
+  document.getElementById('viewComp').style.display  = m==='comp'?'block':'none';
+  document.getElementById('mSplit').classList.toggle('on', m==='split');
+  document.getElementById('mComp').classList.toggle('on', m==='comp');
+  document.getElementById('hint').textContent = m==='comp'
+    ? '拖动分割线,逐像素查看同一帧的去雾效果' : '两路画面来自同一帧,可直接对比';
 }
-async function freeze() {
-  const r = await fetch('/api/freeze', { method: 'POST' });
-  const d = await r.json();
-  toast(d.ok ? `已存档对比记录 #${d.id}` : (d.error || '冻结失败'));
+async function setSource(){
+  const source=document.getElementById('source').value.trim();
+  const r=await fetch('/api/source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source})});
+  const d=await r.json();
+  if(d.ok){toast('已连接:'+source);}else{toast('打开失败:'+(d.error||'检查地址'));setLive(false);}
 }
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 2600);
+async function freeze(){
+  const r=await fetch('/api/freeze',{method:'POST'});
+  const d=await r.json();
+  toast(d.ok?`对比记录 #${d.id} 已存档`:(d.error||'冻结失败'));
 }
-async function refreshMetrics() {
-  try {
-    const m = await (await fetch('/api/metrics')).json();
-    document.getElementById('m-fps').textContent = m.fps;
-    document.getElementById('m-p50').textContent = m.enhance_ms_p50 + ' ms';
-    document.getElementById('m-p95').textContent = m.enhance_ms_p95 + ' ms';
-    document.getElementById('m-e2e').textContent = m.e2e_ms_p50 + ' ms';
-    document.getElementById('m-frames').textContent = m.frames;
-  } catch (e) { /* 服务重启间隙忽略 */ }
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
+function setLive(on){
+  document.getElementById('dot').classList.toggle('live',on);
+  document.getElementById('stTxt').textContent=on?'实时处理中':'未连接';
 }
-setInterval(refreshMetrics, 1000);
-refreshMetrics();
+async function tick(){
+  try{
+    const m=await(await fetch('/api/metrics')).json();
+    document.getElementById('m-fps').textContent=m.fps;
+    document.getElementById('m-p50').innerHTML=m.enhance_ms_p50+'<span>ms</span>';
+    document.getElementById('m-p95').innerHTML=m.enhance_ms_p95+'<span>ms</span>';
+    document.getElementById('m-e2e').innerHTML=m.e2e_ms_p50+'<span>ms</span>';
+    document.getElementById('m-frames').textContent=m.frames;
+    setLive(m.fps>0);
+  }catch(e){setLive(false);}
+}
+setInterval(tick,1000);tick();
 </script>
 </body>
 </html>
