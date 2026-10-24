@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/
+models/
+*.pth
+*.onnx
+*.engine
+*.pt
+.env
+node_modules/
+dist/
+.DS_Store
+pytest_cache/

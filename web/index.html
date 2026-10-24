@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>无人机巡检实时去雾 · W1</title>
+<style>
+  :root { --ink:#0e2928; --paper:#f5f8f7; --accent:#c47935; --muted:#586c69; --line:#cedbd5; }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Microsoft YaHei", sans-serif; background: var(--paper); color: #203b39; }
+  header { padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  header h1 { font-size: 22px; color: var(--ink); }
+  header .tag { font-size: 12px; color: var(--muted); }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type=text] { padding: 8px 10px; width: 300px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+  button { padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button.primary { background: var(--ink); color: #fff; }
+  button.accent { background: var(--accent); color: #fff; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 28px; }
+  .pane { background: #101b1a; border-radius: 12px; overflow: hidden; position: relative; aspect-ratio: 16/9; }
+  .pane img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .pane .label { position: absolute; top: 10px; left: 12px; background: rgba(14,41,40,.85); color: #fff; font-size: 12px; padding: 4px 10px; border-radius: 6px; }
+  .pane .label em { color: #eeb65a; font-style: normal; }
+  #metrics { display: flex; gap: 14px; padding: 14px 28px; flex-wrap: wrap; }
+  .chip { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--muted); }
+  .chip b { color: var(--ink); font-size: 16px; margin-left: 6px; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>无人机巡检 · 实时视觉增强</h1>
+    <div class="tag">W1 骨架 · 当前引擎:暗通道先验(占位) · 实验室模型接入后替换</div>
+  </div>
+  <div class="bar">
+    <input type="text" id="source" placeholder="0 = 摄像头 / rtsp://… / D:\fog.mp4" value="0">
+    <button class="primary" onclick="setSource()">打开视频源</button>
+    <button class="accent" onclick="freeze()">冻结对比 · 取证</button>
+  </div>
+</header>
+
+<main>
+  <div class="pane"><span class="label">原始画面</span><img id="raw" src="/stream/raw" alt="原始画面"></div>
+  <div class="pane"><span class="label">增强画面 <em>(占位引擎)</em></span><img id="enh" src="/stream/enhanced" alt="增强画面"></div>
+</main>
+
+<div id="metrics">
+  <span class="chip">FPS<b id="m-fps">–</b></span>
+  <span class="chip">增强耗时 P50<b id="m-p50">–</b></span>
+  <span class="chip">增强耗时 P95<b id="m-p95">–</b></span>
+  <span class="chip">端到端延迟<b id="m-e2e">–</b></span>
+  <span class="chip">累计帧<b id="m-frames">–</b></span>
+</main>
+
+<div id="toast"></div>
+
+<script>
+async function setSource() {
+  const source = document.getElementById('source').value.trim();
+  const r = await fetch('/api/source', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ source }) });
+  toast((await r.json()).ok ? '视频源已切换: ' + source : '打开失败,请检查源地址');
+}
+async function freeze() {
+  const r = await fetch('/api/freeze', { method: 'POST' });
+  const d = await r.json();
+  toast(d.ok ? `已存档对比记录 #${d.id}` : (d.error || '冻结失败'));
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2600);
+}
+async function refreshMetrics() {
+  try {
+    const m = await (await fetch('/api/metrics')).json();
+    document.getElementById('m-fps').textContent = m.fps;
+    document.getElementById('m-p50').textContent = m.enhance_ms_p50 + ' ms';
+    document.getElementById('m-p95').textContent = m.enhance_ms_p95 + ' ms';
+    document.getElementById('m-e2e').textContent = m.e2e_ms_p50 + ' ms';
+    document.getElementById('m-frames').textContent = m.frames;
+  } catch (e) { /* 服务重启间隙忽略 */ }
+}
+setInterval(refreshMetrics, 1000);
+refreshMetrics();
+</script>
+</body>
+</html>
